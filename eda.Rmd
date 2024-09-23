@@ -1,0 +1,177 @@
+---
+title: "Exploratory Data Analysis"
+author: "Bryan Z"
+date: "2024-09-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(MASS) #stepwise regression
+```
+
+```{r, echo=FALSE}
+# Loading datasets from GitHub
+url <- "https://github.com/gmtanner-cord/DATA470-2024/raw/main/fmhousing/FM_Housing_2018_2022_clean.csv"
+housing_data <- read.csv(url)
+
+#housing_data
+
+# Taking a look at the data structure
+#str(housing_data)
+
+ggplot(housing_data, aes(x = Sold.Price)) +
+  geom_histogram(binwidth = 50000, fill = "blue", color = "white") +
+  ggtitle("Distribution of Sold Prices") +
+  xlab("Sold Price") + 
+  ylab("Frequency")
+
+```
+
+First Guesses on Possible Variables
+
+```{r, echo=FALSE}
+ggplot(housing_data, aes(x = Total.SqFt., y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  geom_smooth(method = "lm", color = "red") +  
+  ggtitle("Sold Price vs. Total Square Feet") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = List.Price, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  geom_smooth(method = "lm", color = "red") +  
+  ggtitle("Sold Price vs. List.Price") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = Year.Built, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. Year.Built") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = Total.Bedrooms, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. Total.Bedrooms") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = Total.Bathrooms, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. Total.Bathrooms") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = Lot.Size.SqFt, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. Lot.Size.SqFt") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = Garage.Stalls, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. Garage.Stalls") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = County, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. County") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+
+ggplot(housing_data, aes(x = High.School, y = Sold.Price)) +
+  geom_point(color = "darkgreen") +
+  ggtitle("Sold Price vs. High.School") +
+  xlab("Total Square Feet") + 
+  ylab("Sold Price")
+```
+
+***Train and Test Dataset***
+
+```{r}
+set.seed(42) 
+test_index <- createDataPartition(housing_data$Sold.Price, p = 0.20, list = FALSE)
+test_set <- housing_data[test_index,]
+train_set <- housing_data[-test_index,]
+```
+
+***Selecting Features - Preliminary Model***
+
+```{r}
+full_model <- lm(Sold.Price ~ List.Price + Total.SqFt. + Year.Built + Total.Bedrooms + 
+            Total.Bathrooms + Lot.Size.SqFt + Garage.Stalls + County + High.School, data = train_set)
+
+#summary(full_model)
+```
+
+***Choosing the Final Model***
+
+```{r}
+# Stepwise regression (both directions)
+stepwise_model <- stepAIC(full_model, direction = "both")
+
+# Display the final stepwise model summary
+#summary(stepwise_model)
+
+```
+
+From these Step-Wise Regression Model, the following variables are recommended as ***good predictors***:
+
+  List.Price | 
+  Total.SqFt. |
+  Year.Built |
+  Total.Bedrooms |
+  Total.Bathrooms |
+  Garage.Stalls |
+  High.School |
+  
+County and Lot.Size.SqFt are not included in this final model. 
+
+This means, that from the linear model p-value metric, there is an agreement on County and Lot.Size.SqFt are not good predictors. High.School is still considered as a good predictor. The multiple R-Squared keeps the same strong fit.
+
+Therefore, a final model would look like this:
+
+***Final Model***
+
+```{r}
+final_model <- lm(formula = Sold.Price ~ List.Price + Total.SqFt. + Year.Built + 
+    Total.Bedrooms + Total.Bathrooms + Garage.Stalls + High.School, 
+    data = train_set)
+
+summary(final_model)
+
+```
+
+***Model Performance Evaluation***
+
+R-squared (96.13%): The model explains a large proportion of the variance in Sold.Price. This high R² suggests that the model is fitting the data well.
+
+Residuals: The large residuals (Min: -2,209,167, Max: 704,753) suggest that while the model performs well overall, there are some extreme cases where the predictions are far from the actual values. This could be due to outliers in the data or limitations in the linear model.
+
+Standard Error: The residual standard error of 25,660 is somewhat large, which could imply there are large deviations in certain cases. This could be acceptable depending on the overall price range in your dataset.
+
+***Generating predictions***
+
+```{r, echo=FALSE}
+predicted_sold_price <- predict(final_model, newdata = train_set)
+
+# Creating data frame for actual vs. predicted values
+actual_vs_predicted <- data.frame(
+  Actual_Sold_Price = train_set$Sold.Price,
+  Predicted_Sold_Price = predicted_sold_price
+)
+
+# Plot Predicted vs Actual Sold Prices
+ggplot(actual_vs_predicted, aes(x = Actual_Sold_Price, y = Predicted_Sold_Price)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
+  ggtitle("Predicted vs Actual Sold Prices") +
+  xlab("Actual Sold Price") + 
+  ylab("Predicted Sold Price")
+```
+
