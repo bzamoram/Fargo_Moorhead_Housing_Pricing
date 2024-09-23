@@ -1,0 +1,35 @@
+/* Get a fancy font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Yusei+Magic&display=swap');
+
+
+/* Set a background color for the body */
+body {
+  background-color: #c2cfd8;
+}
+
+/* Change the font color of the title panel (h2) */
+h2 {
+  color: #83580b;  /* Change to the color you want */
+  font-family: Arial, sans-serif;  /* Optional: Change font style */
+  text-align: center;  /* Optional: Center the text */
+  font-weight: bold;  /* Make the text bold */
+}
+
+/* Style all h3 headings */
+h3 {
+  color: #83580b;  /* Green color */
+  font-family: 'Yusei Magic', sans-serif  /* Set the font */
+  text-align: center;  /* Center the text */
+  font-weight: bold;  /* Make the text bold */
+}
+
+/* Style for the sidebar panel */
+.sidebar {
+  background-color: #e6e6e6;  /* Light gray background */
+  padding: 100px;  /* Add padding */
+}
+
+/* Make text visible on inputs */
+/*.shiny-input-container {
+  color: #474747;
+}*/

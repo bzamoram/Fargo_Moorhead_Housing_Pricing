@@ -4,27 +4,13 @@ library(httr2)
 library(vetiver)
 library(DBI)
 library(duckdb)
-
-# # Load the housing data
-# url <- "https://github.com/gmtanner-cord/DATA470-2024/raw/main/fmhousing/FM_Housing_2018_2022_clean.csv"
-# housing_data <- read.csv(url)
-# 
-# # Establish database connection
-# con <- dbConnect(duckdb::duckdb(), dbdir = "my-housing-db.duckdb")
-# 
-# # Check if "housing_data" exists, then either overwrite or create new
-# if ("housing_data" %in% dbListTables(con)) {
-#   DBI::dbWriteTable(con, "housing_data", housing_data, overwrite = TRUE)
-# } else {
-#   DBI::dbWriteTable(con, "housing_data", housing_data)
-# }
-# 
-# # Disconnect from the database
-# dbDisconnect(con)
+library(dplyr)
 
 # Define UI
 ui <- fluidPage(
-  titlePanel("Housing Price Predictor"),
+  # Link to the CSS file
+  includeCSS("www/styles.css"),
+    titlePanel("Fargo-Moorhead Housing Price Predictor"),
   
   # User input
   sidebarLayout(
@@ -40,9 +26,11 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      h2("Predicted Sold Price"),
+      h3("Predicted Sold Price"),
+      p("Your selected attributes are shown down below for your convience:"),
       tableOutput("input_list"),
-      tableOutput("predicted_price")
+      tableOutput("predicted_price"),
+      p("This predictive model was built by Bryan Zamora.")
     )
   )
 )
@@ -70,7 +58,7 @@ server <- function(input, output) {
       httr2::req_perform() |>
       httr2::resp_body_json()
     
-    tibble::tibble(
+    df <- tibble::tibble(
       List.Price = input$list_price,
       Total.SqFt. = input$sq_ft,
       Year.Built = input$year_built,
@@ -79,6 +67,17 @@ server <- function(input, output) {
       Garage.Stalls = input$garage_stalls,
       High.School = input$high_school,
       Predicted.Price = response$.pred[[1]])
+    
+    df <- df %>%
+      mutate(across(everything(), as.character))
+    
+    df_long <- df |>
+      pivot_longer (cols = everything(),
+                    names_to = "Attributes",
+                    values_to = "Value")
+    
+    df_long
+    
   })
   
   # Render prediction
@@ -91,58 +90,3 @@ server <- function(input, output) {
 shinyApp(ui = ui, server = server)
 
 
-
-
-# # app.R
-# library(shiny)
-# library(vetiver)
-# library(pins)
-# library(plumber)
-# 
-# # Load the model and necessary libraries
-# model_board <- board_temp()
-# v <- vetiver_pin_read(model_board, "model_board")
-# 
-# # Define the UI for the Shiny app
-# ui <- fluidPage(
-#   titlePanel("Housing Price Predictor"),
-#   sidebarLayout(
-#     sidebarPanel(
-#       numericInput("list_price", "List Price:", value = 200000),
-#       numericInput("total_sqft", "Total Square Feet:", value = 1500),
-#       numericInput("year_built", "Year Built:", value = 2000),
-#       numericInput("total_bedrooms", "Total Bedrooms:", value = 3),
-#       numericInput("total_bathrooms", "Total Bathrooms:", value = 2),
-#       numericInput("garage_stalls", "Garage Stalls:", value = 1),
-#       textInput("high_school", "High School:", value = "Some High School"),
-#       actionButton("predict", "Predict")
-#     ),
-#     mainPanel(
-#       textOutput("prediction")
-#     )
-#   )
-# )
-# 
-# # Define server logic
-# server <- function(input, output) {
-#   observeEvent(input$predict, {
-#     new_data <- data.frame(
-#       List.Price = input$list_price,
-#       Total.SqFt. = input$total_sqft,
-#       Year.Built = input$year_built,
-#       Total.Bedrooms = input$total_bedrooms,
-#       Total.Bathrooms = input$total_bathrooms,
-#       Garage.Stalls = input$garage_stalls,
-#       High.School = input$high_school
-#     )
-#     
-#     # Make prediction
-#     prediction <- vetiver_predict(v, new_data)
-#     output$prediction <- renderText({
-#       paste("Predicted Sold Price:", round(prediction$Sold.Price, 2))
-#     })
-#   })
-# }
-# 
-# # Run the application
-# shinyApp(ui = ui, server = server)
