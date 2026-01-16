@@ -35,20 +35,9 @@ final_model <- lm(Sold.Price ~ List.Price + Total.SqFt. + Year.Built +
 # Summary of the model (optional)
 summary(final_model)
 
-# Turning the model into a Vetiver API model
-v <- vetiver_model(final_model, model_name = "housing_model")
-
-# Saving the model to a board
-library(vetiver)
-library(pins)
-library(plumber)
-model_board <- board_temp(versioned = TRUE)
-model_board %>% vetiver_pin_write(v)
-
-# Exposing the model as an API using Plumber
-pr() %>%
-  vetiver_api(v) %>%
-  pr_run(port = 8080)
+# Save the trained model for deployment
+saveRDS(final_model, "housing_price_model.rds")
+message("Model saved successfully to housing_price_model.rds")
 
 # Disconnecting from the database
 DBI::dbDisconnect(con)

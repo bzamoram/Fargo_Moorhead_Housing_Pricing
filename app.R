@@ -1,16 +1,17 @@
 # Load necessary libraries
 library(shiny)
-library(httr2)
-library(vetiver)
-library(DBI)
-library(duckdb)
 library(dplyr)
+library(tidyr)
+
+# Load the trained model at startup
+housing_model <- readRDS("housing_price_model.rds")
 
 # Define UI
 ui <- fluidPage(
-  # Link to the CSS file
+  # Link to the CSS file (if it exists, will be ignored if not)
   includeCSS("www/styles.css"),
-    titlePanel("Fargo-Moorhead Housing Price Predictor"),
+  
+  titlePanel("Fargo-Moorhead Housing Price Predictor"),
   
   # User input
   sidebarLayout(
@@ -21,14 +22,15 @@ ui <- fluidPage(
       numericInput("bedrooms", "Total Bedrooms", value = 3, min = 1, max = 10),
       numericInput("bathrooms", "Total Bathrooms", value = 2, min = 1, max = 10),
       numericInput("garage_stalls", "Garage Stalls", value = 2, min = 0, max = 5),
-      selectInput("high_school", "High School", choices = unique(housing_data$High.School)),
+      selectInput("high_school", "High School", 
+                  choices = c("Davies", "Fargo North", "Fargo South", 
+                              "Moorhead", "West Fargo", "West Fargo Sheyenne")),
       actionButton("predict", "Predict")
     ),
     
     mainPanel(
       h3("Predicted Sold Price"),
-      p("Your selected attributes are shown down below for your convience:"),
-      tableOutput("input_list"),
+      p("Your selected attributes are shown down below for your convenience:"),
       tableOutput("predicted_price"),
       p("This predictive model was built by Bryan Zamora.")
     )
@@ -37,13 +39,11 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
-  api_url <- "http://127.0.0.1:8080/predict"
   
-  
-  
-  # Fetch prediction from API
+  # Fetch prediction from loaded model
   predicted_price <- eventReactive(input$predict, {
-    req_body <- tibble::tibble(
+    # Create input dataframe matching model training data
+    req_body <- data.frame(
       List.Price = input$list_price,
       Total.SqFt. = input$sq_ft,
       Year.Built = input$year_built,
@@ -53,11 +53,10 @@ server <- function(input, output) {
       High.School = input$high_school
     )
     
-    response <- httr2::request(api_url) |>
-      httr2::req_body_json(req_body) |>
-      httr2::req_perform() |>
-      httr2::resp_body_json()
+    # Make prediction using the loaded model
+    prediction <- predict(housing_model, newdata = req_body)
     
+    # Format output to match original structure
     df <- tibble::tibble(
       List.Price = input$list_price,
       Total.SqFt. = input$sq_ft,
@@ -66,18 +65,18 @@ server <- function(input, output) {
       Total.Bathrooms = input$bathrooms,
       Garage.Stalls = input$garage_stalls,
       High.School = input$high_school,
-      Predicted.Price = response$.pred[[1]])
+      Predicted.Price = round(prediction, 0)
+    )
     
     df <- df %>%
       mutate(across(everything(), as.character))
     
-    df_long <- df |>
-      pivot_longer (cols = everything(),
-                    names_to = "Attributes",
-                    values_to = "Value")
+    df_long <- df %>%
+      pivot_longer(cols = everything(),
+                   names_to = "Attributes",
+                   values_to = "Value")
     
     df_long
-    
   })
   
   # Render prediction
@@ -88,5 +87,3 @@ server <- function(input, output) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
-
-
